@@ -1,7 +1,6 @@
-import { StyleSheet, SafeAreaView, Text, Pressable, Image, FlatList, View, Button } from "react-native";
+import { StyleSheet, SafeAreaView, Text, Pressable, Image, FlatList, View } from "react-native";
 import { useSpotifyAuth, millisToMinutesAndSeconds } from "./utils";
 import { Themes } from "./assets/Themes";
-// const window = useWindowDimensions();
 
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from "react-native-webview";
@@ -33,25 +32,26 @@ const SpotifyAuthButton = (props) => {
 }
 
 const DetailedSongScreen = ({navigation, route}) => {
-  let url = route.params
+  let item_object = route.params.song_item
+  const song_details = item_object["item"]["external_urls"]["spotify"]
   return (
-      <View>
-          <Text>
-              This will be the detailed song screen!
-          </Text>
-      </View>
+    <WebView
+      source={{
+        uri: song_details
+      }}
+    />
   )
 }
 
 const SongPreviewScreen = ({navigation, route}) => {
-  console.log("Code made it to the song preview screen")
-  const url = route.params
+  const item_object = route.params.song_item
+  const track_preview_url = item_object["item"]["preview_url"]
   return (
-      <View>
-          <Text>
-              This will be the song preview screen!
-          </Text>
-      </View>
+    <WebView
+      source={{
+        uri: track_preview_url
+      }}
+    />
   )
 }
 
@@ -71,19 +71,24 @@ const renderSong = (item, navigation) => {
   let album_name = item["item"]["album"]["name"]
   let duration_ms = item["item"]["duration_ms"]
   
-  console.log(typeof(item))
   return (
     <View style={styles.track}>
-      <Button title="PLAY BUTTON" onPress={() => navigation.navigate('SongPreviewScreen')}/>
-      {/* Code below is the full song lists (will uncomment once the basic button navigation above works) */}
-      {/* <Pressable 
+      <Pressable 
         style={styles.play_button} 
-        onPress = {() => { console.log("hi"), console.log(typeof(item))
-          navigation.navigate('SongPreviewScreen',{track_url : item})
-          ;}}>
+        onPress = {() => { 
+          navigation.navigate('SongPreviewScreen', {
+            song_item: item,
+          });
+      }}>
           <Ionicons name="play-circle" size={24} color={Themes.colors.spotify} />
       </Pressable>
-      <Pressable style={styles.song_row}>
+      <Pressable 
+        style={styles.song_row}
+        onPress = {() => { 
+          navigation.navigate('DetailedSongScreen', {
+            song_item: item,
+          });
+        }}>
         <Image
             style={styles.album_image}
             source={{uri: album_image }} 
@@ -102,12 +107,12 @@ const renderSong = (item, navigation) => {
         <Text style={styles.song_duration}>
           {millisToMinutesAndSeconds(duration_ms)}
         </Text>  
-      </Pressable> */}
+      </Pressable>
     </View>
   )
 }
 
-const SongsList = (props, {navigation}) => {
+const SongsList = (props) => {
   return (
     <SafeAreaView style={styles.top_tracks_background}>
       <View style={styles.my_top_tracks_header}>
@@ -128,8 +133,7 @@ const SongsList = (props, {navigation}) => {
 
       <FlatList style={styles.songList}
         data={props.songs}
-        // renderItem={(item, index) => renderSong(item, index, navigation)}
-        renderItem={(item) => renderSong(item, navigation)}
+        renderItem={(item) => renderSong(item, props.navigation)}
         keyExtractor={(item, index) => index}
         />
     </SafeAreaView>
@@ -142,7 +146,7 @@ const HomeScreen = ({navigation}) => {
   let contentDisplayed = null;
 
   if (token) {
-    contentDisplayed = <SongsList songs={tracks}/>
+    contentDisplayed = <SongsList songs={tracks} navigation={navigation}/>
   } else {
     contentDisplayed = <SpotifyAuthButton authFunction={getSpotifyAuth} />
   }
@@ -150,9 +154,6 @@ const HomeScreen = ({navigation}) => {
   return (
     <SafeAreaView style={styles.container}>
       {contentDisplayed}
-      {/* Hardcoding Buttons to test out basic navigation from home screen */}
-      {/* <Button title="Go to DetailedSongScreen" onPress={() => navigation.navigate('DetailedSongScreen')}/> */}
-      {/* <Button title="PLAY BUTTON" onPress={() => navigation.navigate('SongPreviewScreen')}/> */}
     </SafeAreaView>
   );
 }
@@ -161,9 +162,21 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        <Stack.Screen name = "HomeScreen" component={HomeScreen}/>
-        <Stack.Screen name="DetailedSongScreen" component={DetailedSongScreen}/>
-        <Stack.Screen name = "SongPreviewScreen" component={SongPreviewScreen}/>
+        <Stack.Screen 
+          name = "HomeScreen" 
+          component={HomeScreen} 
+          options={{headerShown: false}}
+        />
+        <Stack.Screen 
+          name="DetailedSongScreen" 
+          component={DetailedSongScreen}
+          options={{headerStyle: {backgroundColor: Themes.colors.background}, headerTitleStyle: {color: Themes.colors.white}}}
+        />
+        <Stack.Screen 
+          name = "SongPreviewScreen" 
+          component={SongPreviewScreen}
+          options={{headerStyle: {backgroundColor: Themes.colors.background}, headerTitleStyle: {color: Themes.colors.white}}}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -222,16 +235,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-evenly',
     height: 70, 
-    backgroundColor: 'lightpink',
   },
   play_button: {
     textAlign: 'center',
     width: '8%',
-    backgroundColor: 'green',
   },
   song_row: {
     width: '92%',
-    backgroundColor: 'red',
     alignItems: 'center',
     flexDirection: 'row', 
     justifyContent: 'space-between'
